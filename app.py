@@ -106,23 +106,32 @@ def upload():
     return render_template('upload.html')
 
 
+def createDirIfNotExists(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+
 @app.route('/upload_image', methods=['POST'])
 @auth.login_required
 def upload_image():
     pic = request.files["image_upload"]
     filename = secure_filename(pic.filename)
-    userpath = os.path.expanduser('~')
-    pic.save(userpath + "/images/" + filename)
-    return redirect(url_for('image', filename=filename))
+    user_path = os.path.expanduser('~')
+    username = auth.current_user.username
+    createDirIfNotExists(user_path + "/images/" + username + "/")
+    pic.save(user_path + "/images/" + username + "/" + filename)
+    user_image = UserImage(username=username, name=filename)
+    db.session.add(user_image)
+    db.session.commit()
+    return redirect(url_for('image', username=username, filename=filename))
 
 
-@app.route('/images/<filename>')
+@app.route('/images/<username>/<filename>')
 @auth.login_required
-def image(filename):
-    user = auth.current_user
-    # return render_template(url_for('image'))
-    return send_from_directory(os.path.expanduser('~') + "/images/" + user, filename)
-
+def image(username, filename):
+    username = auth.current_user.username
+    return render_template(url_for('image'), )
+    return send_from_directory(os.path.expanduser('~') + "/images/" + username, filename)
 
 if __name__ == '__main__':
     if not os.path.exists('db.sqlite'):
