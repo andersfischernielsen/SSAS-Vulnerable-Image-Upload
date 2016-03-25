@@ -1,29 +1,45 @@
 #!/usr/bin/env python
 import os
-from flask import Flask, abort, request, jsonify, g, url_for, render_template, redirect
+from flask import Flask, abort, request, jsonify, g, url_for, render_template, redirect, send_from_directory
+from flask.ext.login import UserMixin
+import flask.ext.login as auth
 from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.httpauth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
 from passlib.apps import custom_app_context as pwd_context
-from itsdangerous import (TimedJSONWebSignatureSerializer
-                          as Serializer, BadSignature, SignatureExpired)
+from flask_wtf import Form
+from wtforms import StringField, PasswordField, validators
 
 # initialization
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
+WTF_CSRF_SECRET_KEY = 'a random string'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 
 # extensions
 db = SQLAlchemy(app)
-auth = HTTPBasicAuth()
+login_manager = auth.LoginManager()
+login_manager.init_app(app)
 
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(32), index=True)
     password_hash = db.Column(db.String(64))
+    authenticated = db.Column(db.Boolean, default=False)
+
+    def get_id(self):
+        return self.id
+
+    def is_authenticated(self):
+        return self.authenticated
+
+    def is_anonymous(self):
+        return False
+
+    def is_active(self):
+        return True
 
     def hash_password(self, password):
         self.password_hash = pwd_context.encrypt(password)
@@ -48,59 +64,101 @@ class User(db.Model):
         return user
 
 
-@auth.verify_password
-def verify_password(username_or_token, password):
-    # first try to authenticate by token
-    user = User.verify_auth_token(username_or_token)
-    if not user:
-        # try to authenticate with username/password
-        user = User.query.filter_by(username=username_or_token).first()
-        if not user or not user.verify_password(password):
+class LoginForm(Form):
+    username = StringField('Username', [validators.Required()])
+    password = PasswordField('Password', [validators.Required()])
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        self.user = None
+
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
             return False
-    g.user = user
-    return True
+
+        user = User.query.filter_by(
+            username=self.username.data).first()
+        if user is None:
+            self.username.errors.append('Unknown username')
+            return False
+
+        if not user.verify_password(self.password.data):
+            self.password.errors.append('Invalid password')
+            return False
+
+        self.user = user
+        return True
 
 
-@app.route('/create_user', methods=['GET'])
-def create_user():
-    return render_template('create_user.html')
+class RegisterForm(Form):
+    username = StringField('Username', [validators.Required()])
+    password = PasswordField('Password', [validators.Required()])
 
 
-@app.route('/new_user', methods=['POST'])
-def post_user():
-    username = request.form.get('username')
-    password = request.form.get('password')
-    if username is None or password is None:
-        abort(400)    # missing arguments
-    if User.query.filter_by(username=username).first() is not None:
-        abort(409)    # existing user
-    user = User(username=username)
-    user.hash_password(password)
+@login_manager.user_loader
+def user_loader(user_id):
+    return User.query.get(user_id)
+
+
+@login_manager.request_loader
+def load_user_from_request(request):
+
+    # first, try to login using the api_key url arg
+    api_key = request.args.get('api_key')
+    if api_key:
+        user = User.query.filter_by(api_key=api_key).first()
+        if user:
+            return user
+
+    # next, try to login using Basic Auth
+    api_key = request.headers.get('Authorization')
+    if api_key:
+        api_key = api_key.replace('Basic ', '', 1)
+        try:
+            api_key = base64.b64decode(api_key)
+        except TypeError:
+            pass
+        user = User.query.filter_by(api_key=api_key).first()
+        if user:
+            return user
+
+    # finally, return None if both methods did not login the user
+    return None
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """For GET requests, display the login form. For POSTS, login the current user
+    by processing the form."""
+    form = LoginForm(request.form)
+    if form.validate():
+        auth.login_user(user)
+        return redirect(url_for("upload_image"))
+    return render_template("login.html", form=form)
+
+
+@app.route("/logout", methods=["GET"])
+@auth.login_required
+def logout():
+    user = current_user
+    user.authenticated = False
     db.session.add(user)
     db.session.commit()
-    return (jsonify({'username': user.username}), 201,
-            {'Location': url_for('get_user', id=user.id, _external=True)})
+    logout_user()
+    return render_template("logout.html")
 
 
-@app.route('/users/<int:id>')
-def get_user(id):
-    user = User.query.get(id)
-    if not user:
-        abort(400)
-    return jsonify({'username': user.username})
-
-
-@app.route('/token')
-@auth.login_required
-def get_auth_token():
-    token = g.user.generate_auth_token(600)
-    return jsonify({'token': token.decode('ascii'), 'duration': 600})
-
-
-@app.route('/resource')
-@auth.login_required
-def get_resource():
-    return jsonify({'data': 'Hello, %s!' % g.user.username})
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = User(username=form.username.data)
+        user.hash_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
 
 
 @app.route('/')
@@ -110,7 +168,7 @@ def hello():
 
 
 @app.route('/upload_image', methods=['POST'])
-def login():
+def upload():
     pic = request.files["image_upload"]
     filename = secure_filename(pic.filename)
     pic.save("/www-data/images/" + filename)

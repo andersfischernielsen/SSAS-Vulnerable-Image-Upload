@@ -7,11 +7,12 @@
 <body>
     <h1>Create User</h1>
 
-    <form action="/new_user" method="post" enctype="multipart/form-data">
+    <form action="/register" method="post" enctype="multipart/form-data">
         <h2>Username</h2>
         <input type="text" name="username">
         <h2>Password</h2>
         <input type="password" name="password">
+        {{ form.hidden_tag() }}
         <input type="submit">
     </form>
 </body>
