@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Image</title>
+</head>
+{% block body ‰}
+	<img src="{{ imgsrc }}"/>
+	<ul class="comments">
+		{% for comment in comments %
+		<li> <h2> {{ comment.parent.username }}  </h2> {{comment.text}} </li>
+		{% endfor %}
+	</ul>
+{% endblock }
+</html>

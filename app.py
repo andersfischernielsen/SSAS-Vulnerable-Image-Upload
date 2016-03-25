@@ -4,10 +4,14 @@ from flask import Flask, abort, request, jsonify, g, url_for, render_template, r
 from flask.ext.login import UserMixin
 import flask.ext.login as auth
 from flask.ext.sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import relationship
+
 from werkzeug.utils import secure_filename
 from passlib.apps import custom_app_context as pwd_context
 from flask_wtf import Form
 from wtforms import StringField, PasswordField, validators
+
+
 
 # initialization
 app = Flask(__name__)
@@ -21,50 +25,6 @@ db = SQLAlchemy(app)
 login_manager = auth.LoginManager()
 login_manager.init_app(app)
 
-
-#
-# Auth code etc.
-#
-class User(db.Model, UserMixin):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(32), index=True)
-    password_hash = db.Column(db.String(64))
-    authenticated = db.Column(db.Boolean, default=False)
-
-    def get_id(self):
-        return self.id
-
-    def is_authenticated(self):
-        return self.authenticated
-
-    def is_anonymous(self):
-        return False
-
-    def is_active(self):
-        return True
-
-    def hash_password(self, password):
-        self.password_hash = pwd_context.encrypt(password)
-
-    def verify_password(self, password):
-        return pwd_context.verify(password, self.password_hash)
-
-    def generate_auth_token(self, expiration=600):
-        s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
-        return s.dumps({'id': self.id})
-
-    @staticmethod
-    def verify_auth_token(token):
-        s = Serializer(app.config['SECRET_KEY'])
-        try:
-            data = s.loads(token)
-        except SignatureExpired:
-            return None    # valid token, but expired
-        except BadSignature:
-            return None    # invalid token
-        user = User.query.get(data['id'])
-        return user
 
 class LoginForm(Form):
     username = StringField('Username', [validators.Required()])
@@ -104,28 +64,6 @@ def user_loader(user_id):
 
 
 #
-# Our code for image upload etc.
-#
-class UserImage(db.Model):
-    __tablename__ = 'userimages'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(32), index=True)
-    name = db.Column(db.String(32))
-
-
-class SharedImage(db.Model):
-    __tablename__ = 'sharedimages'
-    id = db.Column(db.Integer, primary_key=True)
-    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
-    sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
-
-
-class Comment(db.Model):
-    __tablename__ = 'comments'
-    id = db.Column(db.Integer, primary_key=True)
-    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
-    comment = db.Column(db.String)
-
 #
 # Routings etc.
 #
@@ -192,11 +130,84 @@ def upload_image():
 @auth.login_required
 def image(username, filename):
     username = auth.current_user.username
+    return render_template(url_for('image'), )
     return send_from_directory(os.path.expanduser('~') + "/images/" + username, filename)
-
 
 if __name__ == '__main__':
     if not os.path.exists('db.sqlite'):
         db.create_all()
     app.debug = True
     app.run()
+
+
+
+#
+# Auth code etc.
+#
+class User(db.Model, UserMixin):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32), index=True)
+    password_hash = db.Column(db.String(64))
+    authenticated = db.Column(db.Boolean, default=False)
+    comments = relationship("Comment", back_populates="user")
+
+    def get_id(self):
+        return self.id
+
+    def is_authenticated(self):
+        return self.authenticated
+
+    def is_anonymous(self):
+        return False
+
+    def is_active(self):
+        return True
+
+    def hash_password(self, password):
+        self.password_hash = pwd_context.encrypt(password)
+
+    def verify_password(self, password):
+        return pwd_context.verify(password, self.password_hash)
+
+    def generate_auth_token(self, expiration=600):
+        s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
+        return s.dumps({'id': self.id})
+
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer(app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except SignatureExpired:
+            return None    # valid token, but expired
+        except BadSignature:
+            return None    # invalid token
+        user = User.query.get(data['id'])
+        return user
+
+
+
+# Our code for image upload etc.
+#
+class UserImage(db.Model):
+    __tablename__ = 'userimages'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32), index=True)
+    name = db.Column(db.String(32))
+
+
+class SharedImage(db.Model):
+    __tablename__ = 'sharedimages'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    comment = db.Column(db.String)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user = relationship("User", back_populates="comments")

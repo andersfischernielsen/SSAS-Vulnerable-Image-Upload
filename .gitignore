@@ -30,6 +30,9 @@ var/
 *.manifest
 *.spec
 
+#bah
+.idea/
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
