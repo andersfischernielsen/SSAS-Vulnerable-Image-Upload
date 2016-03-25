@@ -30,8 +30,8 @@
       <file leaf-file-name="app.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="375">
-              <caret line="25" column="16" selection-start-line="25" selection-start-column="16" selection-end-line="25" selection-end-column="16" />
+            <state relative-caret-position="165">
+              <caret line="115" column="54" selection-start-line="115" selection-start-column="54" selection-end-line="115" selection-end-column="54" />
               <folding>
                 <element signature="e#22#31#0" expanded="true" />
               </folding>
@@ -657,12 +657,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1458894630068</updated>
-      <workItem from="1458894632495" duration="9829000" />
+      <workItem from="1458894632495" duration="9907000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="9829000" />
+    <option name="totallyTimeSpent" value="9907000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1680" height="1050" extended-state="0" />
@@ -703,12 +703,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="python-line">
           <url>file://$PROJECT_DIR$/app.py</url>
-          <line>130</line>
-          <option name="timeStamp" value="22" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="python-line">
-          <url>file://$PROJECT_DIR$/app.py</url>
-          <line>112</line>
+          <line>122</line>
           <option name="timeStamp" value="28" />
         </line-breakpoint>
       </breakpoints>
@@ -784,8 +779,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="375">
-          <caret line="25" column="16" selection-start-line="25" selection-start-column="16" selection-end-line="25" selection-end-column="16" />
+        <state relative-caret-position="165">
+          <caret line="115" column="54" selection-start-line="115" selection-start-column="54" selection-end-line="115" selection-end-column="54" />
           <folding>
             <element signature="e#22#31#0" expanded="true" />
           </folding>

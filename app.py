@@ -104,10 +104,20 @@ def user_loader(user_id):
     return User.query.get(user_id)
 
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = User(username=form.username.data)
+        user.hash_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """For GET requests, display the login form. For POSTS, login the current user
-    by processing the form."""
     form = LoginForm(request.form)
     if form.validate():
         auth.login_user(user)
@@ -124,18 +134,6 @@ def logout():
     db.session.commit()
     logout_user()
     return render_template("logout.html")
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    form = RegisterForm(request.form)
-    if request.method == 'POST' and form.validate():
-        user = User(username=form.username.data)
-        user.hash_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for('login'))
-    return render_template('register.html', form=form)
 
 
 #
