@@ -32,6 +32,8 @@ var/
 
 #bah
 .idea/
+.idea
+
 
 # Installer logs
 pip-log.txt

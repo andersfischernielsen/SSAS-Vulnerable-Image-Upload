@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 from flask import Flask, abort, request, jsonify, g, url_for, render_template, redirect, send_from_directory
-from flask.ext.login import UserMixin
+from flask_login import UserMixin
 import flask.ext.login as auth
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
@@ -24,6 +24,80 @@ app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 db = SQLAlchemy(app)
 login_manager = auth.LoginManager()
 login_manager.init_app(app)
+
+
+
+#
+# Auth code etc.
+#
+class User(db.Model, UserMixin):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32), index=True)
+    password_hash = db.Column(db.String(64))
+    authenticated = db.Column(db.Boolean, default=False)
+    comments = relationship("Comment", back_populates="user")
+
+    def get_id(self):
+        return self.id
+
+    def is_authenticated(self):
+        return self.authenticated
+
+    def is_anonymous(self):
+        return False
+
+    def is_active(self):
+        return True
+
+    def hash_password(self, password):
+        self.password_hash = pwd_context.encrypt(password)
+
+    def verify_password(self, password):
+        return pwd_context.verify(password, self.password_hash)
+
+    # def generate_auth_token(self, expiration=600):
+    #     s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
+    #     return s.dumps({'id': self.id})
+
+    # @staticmethod
+    # def verify_auth_token(token):
+    #     s = Serializer(app.config['SECRET_KEY'])
+    #     try:
+    #         data = s.loads(token)
+    #     except SignatureExpired:
+    #         return None    # valid token, but expired
+    #     except BadSignature:
+    #         return None    # invalid token
+    #     user = User.query.get(data['id'])
+    #     return user
+    #
+
+
+# Our code for image upload etc.
+#
+class UserImage(db.Model):
+    __tablename__ = 'userimages'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32), index=True)
+    filename = db.Column(db.String(32))
+    comments = relationship("Comment")
+
+class SharedImage(db.Model):
+    __tablename__ = 'sharedimages'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    comment = db.Column(db.String)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user = relationship("User", back_populates="comments")
+
 
 
 class LoginForm(Form):
@@ -118,9 +192,9 @@ def upload_image():
     filename = secure_filename(pic.filename)
     user_path = os.path.expanduser('~')
     username = auth.current_user.username
-    createDirIfNotExists(user_path + "/images/" + username + "/")
-    pic.save(user_path + "/images/" + username + "/" + filename)
-    user_image = UserImage(username=username, name=filename)
+    createDirIfNotExists("static/images/" + username + "/")
+    pic.save("static/images/" + username + "/" + filename)
+    user_image = UserImage(username=username, filename=filename)
     db.session.add(user_image)
     db.session.commit()
     return redirect(url_for('image', username=username, filename=filename))
@@ -129,9 +203,17 @@ def upload_image():
 @app.route('/images/<username>/<filename>')
 @auth.login_required
 def image(username, filename):
-    username = auth.current_user.username
-    return render_template(url_for('image'), )
-    return send_from_directory(os.path.expanduser('~') + "/images/" + username, filename)
+    current_user = auth.current_user
+    image = UserImage.query.filter_by(username=username, filename=filename).first()
+
+    url = "images/" + username + "/" + filename
+
+    if current_user.username != username:
+        isshared = SharedImage.query.filter_by(sharedWithId=current_user.id).first()
+        if not isshared:
+            return abort(405)
+    return render_template('image.html', image=image, filename=url)
+
 
 if __name__ == '__main__':
     if not os.path.exists('db.sqlite'):
@@ -140,74 +222,3 @@ if __name__ == '__main__':
     app.run()
 
 
-
-#
-# Auth code etc.
-#
-class User(db.Model, UserMixin):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(32), index=True)
-    password_hash = db.Column(db.String(64))
-    authenticated = db.Column(db.Boolean, default=False)
-    comments = relationship("Comment", back_populates="user")
-
-    def get_id(self):
-        return self.id
-
-    def is_authenticated(self):
-        return self.authenticated
-
-    def is_anonymous(self):
-        return False
-
-    def is_active(self):
-        return True
-
-    def hash_password(self, password):
-        self.password_hash = pwd_context.encrypt(password)
-
-    def verify_password(self, password):
-        return pwd_context.verify(password, self.password_hash)
-
-    def generate_auth_token(self, expiration=600):
-        s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
-        return s.dumps({'id': self.id})
-
-    @staticmethod
-    def verify_auth_token(token):
-        s = Serializer(app.config['SECRET_KEY'])
-        try:
-            data = s.loads(token)
-        except SignatureExpired:
-            return None    # valid token, but expired
-        except BadSignature:
-            return None    # invalid token
-        user = User.query.get(data['id'])
-        return user
-
-
-
-# Our code for image upload etc.
-#
-class UserImage(db.Model):
-    __tablename__ = 'userimages'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(32), index=True)
-    name = db.Column(db.String(32))
-
-
-class SharedImage(db.Model):
-    __tablename__ = 'sharedimages'
-    id = db.Column(db.Integer, primary_key=True)
-    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
-    sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
-
-
-class Comment(db.Model):
-    __tablename__ = 'comments'
-    id = db.Column(db.Integer, primary_key=True)
-    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
-    comment = db.Column(db.String)
-    userId = db.Column(db.Integer, db.ForeignKey('users.id'))
-    user = relationship("User", back_populates="comments")
