@@ -22,6 +22,9 @@ login_manager = auth.LoginManager()
 login_manager.init_app(app)
 
 
+#
+# Auth code etc.
+#
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -101,32 +104,6 @@ def user_loader(user_id):
     return User.query.get(user_id)
 
 
-@login_manager.request_loader
-def load_user_from_request(request):
-
-    # first, try to login using the api_key url arg
-    api_key = request.args.get('api_key')
-    if api_key:
-        user = User.query.filter_by(api_key=api_key).first()
-        if user:
-            return user
-
-    # next, try to login using Basic Auth
-    api_key = request.headers.get('Authorization')
-    if api_key:
-        api_key = api_key.replace('Basic ', '', 1)
-        try:
-            api_key = base64.b64decode(api_key)
-        except TypeError:
-            pass
-        user = User.query.filter_by(api_key=api_key).first()
-        if user:
-            return user
-
-    # finally, return None if both methods did not login the user
-    return None
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """For GET requests, display the login form. For POSTS, login the current user
@@ -161,6 +138,9 @@ def register():
     return render_template('register.html', form=form)
 
 
+#
+# Our code for image upload etc.
+#
 @app.route('/')
 @auth.login_required
 def hello():
