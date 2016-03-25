@@ -120,20 +120,21 @@ def register():
 def login():
     form = LoginForm(request.form)
     if form.validate():
+        user = User.query.filter_by(username=form.username.data).first()
         auth.login_user(user)
-        return redirect(url_for("upload_image"))
+        return redirect(url_for("upload"))
     return render_template("login.html", form=form)
 
 
 @app.route("/logout", methods=["GET"])
 @auth.login_required
 def logout():
-    user = current_user
+    user = auth.current_user
     user.authenticated = False
     db.session.add(user)
     db.session.commit()
-    logout_user()
-    return render_template("logout.html")
+    auth.logout_user()
+    return redirect(url_for('login'))
 
 
 #
@@ -141,12 +142,13 @@ def logout():
 #
 @app.route('/')
 @auth.login_required
-def hello():
+def upload():
     return render_template('upload.html')
 
 
 @app.route('/upload_image', methods=['POST'])
-def upload():
+@auth.login_required
+def upload_image():
     pic = request.files["image_upload"]
     filename = secure_filename(pic.filename)
     pic.save("/www-data/images/" + filename)
