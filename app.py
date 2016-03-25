@@ -66,7 +66,6 @@ class User(db.Model, UserMixin):
         user = User.query.get(data['id'])
         return user
 
-
 class LoginForm(Form):
     username = StringField('Username', [validators.Required()])
     password = PasswordField('Password', [validators.Required()])
@@ -104,28 +103,32 @@ def user_loader(user_id):
     return User.query.get(user_id)
 
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    """For GET requests, display the login form. For POSTS, login the current user
-    by processing the form."""
-    form = LoginForm(request.form)
-    if form.validate():
-        auth.login_user(user)
-        return redirect(url_for("upload_image"))
-    return render_template("login.html", form=form)
+#
+# Our code for image upload etc.
+#
+class UserImage(db.Model):
+    __tablename__ = 'userimages'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32), index=True)
+    name = db.Column(db.String(32))
 
 
-@app.route("/logout", methods=["GET"])
-@auth.login_required
-def logout():
-    user = current_user
-    user.authenticated = False
-    db.session.add(user)
-    db.session.commit()
-    logout_user()
-    return render_template("logout.html")
+class SharedImage(db.Model):
+    __tablename__ = 'sharedimages'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    comment = db.Column(db.String)
+
+#
+# Routings etc.
+#
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm(request.form)
@@ -138,27 +141,48 @@ def register():
     return render_template('register.html', form=form)
 
 
-#
-# Our code for image upload etc.
-#
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    form = LoginForm(request.form)
+    if form.validate():
+        user = User.query.filter_by(username=form.username.data).first()
+        auth.login_user(user)
+        return redirect(url_for("upload"))
+    return render_template("login.html", form=form)
+
+
+@app.route("/logout", methods=["GET"])
+@auth.login_required
+def logout():
+    user = auth.current_user
+    user.authenticated = False
+    db.session.add(user)
+    db.session.commit()
+    auth.logout_user()
+    return redirect(url_for('login'))
+
+
 @app.route('/')
 @auth.login_required
-def hello():
+def upload():
     return render_template('upload.html')
 
 
 @app.route('/upload_image', methods=['POST'])
-def upload():
+@auth.login_required
+def upload_image():
     pic = request.files["image_upload"]
     filename = secure_filename(pic.filename)
-    pic.save("/www-data/images/" + filename)
+    userpath = os.path.expanduser('~')
+    pic.save(userpath + "/images/" + filename)
     return redirect(url_for('image', filename=filename))
 
 
 @app.route('/images/<filename>')
 @auth.login_required
 def image(filename):
-    return send_from_directory("/www-data/images/", filename)
+    user = auth.current_user
+    return send_from_directory(os.path.expanduser('~') + "/images/" + user, filename)
 
 
 if __name__ == '__main__':
