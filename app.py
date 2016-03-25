@@ -66,7 +66,6 @@ class User(db.Model, UserMixin):
         user = User.query.get(data['id'])
         return user
 
-
 class LoginForm(Form):
     username = StringField('Username', [validators.Required()])
     password = PasswordField('Password', [validators.Required()])
@@ -104,6 +103,32 @@ def user_loader(user_id):
     return User.query.get(user_id)
 
 
+#
+# Our code for image upload etc.
+#
+class UserImage(db.Model):
+    __tablename__ = 'userimages'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32), index=True)
+    name = db.Column(db.String(32))
+
+
+class SharedImage(db.Model):
+    __tablename__ = 'sharedimages'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
+    comment = db.Column(db.String)
+
+#
+# Routings etc.
+#
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm(request.form)
@@ -137,9 +162,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-#
-# Our code for image upload etc.
-#
 @app.route('/')
 @auth.login_required
 def upload():
@@ -151,14 +173,16 @@ def upload():
 def upload_image():
     pic = request.files["image_upload"]
     filename = secure_filename(pic.filename)
-    pic.save("/www-data/images/" + filename)
+    userpath = os.path.expanduser('~')
+    pic.save(userpath + "/images/" + filename)
     return redirect(url_for('image', filename=filename))
 
 
 @app.route('/images/<filename>')
 @auth.login_required
 def image(filename):
-    return send_from_directory("/www-data/images/", filename)
+    user = auth.current_user
+    return send_from_directory(os.path.expanduser('~') + "/images/" + user, filename)
 
 
 if __name__ == '__main__':
