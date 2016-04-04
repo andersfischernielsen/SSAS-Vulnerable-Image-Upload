@@ -9,9 +9,7 @@ from sqlalchemy.orm import relationship
 from werkzeug.utils import secure_filename
 from passlib.apps import custom_app_context as pwd_context
 from flask_wtf import Form
-from wtforms import StringField, PasswordField, validators
-
-
+from wtforms import StringField, PasswordField, validators, HiddenField, SelectField
 
 # initialization
 app = Flask(__name__)
@@ -126,6 +124,31 @@ class LoginForm(Form):
         self.user = user
         return True
 
+class CommentForm(Form):
+    comment_text = StringField('Comment',  [validators.Required()])
+    image_id = HiddenField('ImageID',  [validators.Required()])
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+
+    def validate(self):
+        rv = Form.validate(self)
+        return True
+
+class ShareForm(Form):
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+
+    users = SelectField(u'Group', coerce=int)
+    image_id = HiddenField('ImageID',  [validators.Required()])
+
+    def validate(self):
+        rv = Form.validate(self)
+        return True
+
+
+
 
 class RegisterForm(Form):
     username = StringField('Username', [validators.Required()])
@@ -141,6 +164,41 @@ def user_loader(user_id):
 #
 # Routings etc.
 #
+@app.route('/comment', methods=['GET', 'POST'])
+def comment():
+    form = CommentForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = auth.current_user
+        comment = Comment()
+        comment.imageId = form.image_id.data
+        comment.comment = form.comment_text.data
+        comment.userId = user.id
+        image = UserImage.query.filter_by(id = form.image_id.data).first()
+        if image:
+            shared = SharedImage.query.filter_by(imageId = form.image_id.data, sharedWithId = user.id).first()
+            if image.username != user.username and not shared:
+                return abort(405)
+            else:
+                db.session.add(comment)
+                db.session.commit()
+                return redirect(url_for('image', username=user.username, filename=image.filename))
+        else:
+            return abort(404)
+
+@app.route('/share', methods=['GET', 'POST'])
+def share():
+    form = ShareForm(request.form)
+    user = auth.current_user
+    image = UserImage.query.filter_by(id = form.image_id.data).first()
+    if image.username == user.username:
+        sharing = SharedImage()
+        sharing.imageId = image.id
+        sharing.sharedWithId = form.users.data
+        db.session.add(sharing)
+        db.session.commit()
+        return redirect(url_for('image', username=user.username, filename=image.filename))
+    return abort(403)
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm(request.form)
@@ -177,7 +235,7 @@ def logout():
 @app.route('/')
 @auth.login_required
 def upload():
-    return render_template('upload.html')
+    return render_template('index.html')
 
 
 def createDirIfNotExists(path):
@@ -208,11 +266,14 @@ def image(username, filename):
 
     url = "images/" + username + "/" + filename
 
+    share_form = ShareForm()
+    share_form.users.choices = [(u.id, u.username) for u in User.query.filter(User.username != current_user.username)]
+
     if current_user.username != username:
         isshared = SharedImage.query.filter_by(sharedWithId=current_user.id).first()
         if not isshared:
             return abort(405)
-    return render_template('image.html', image=image, filename=url)
+    return render_template('image.html', image=image, filename=url,share_form = share_form)
 
 
 if __name__ == '__main__':

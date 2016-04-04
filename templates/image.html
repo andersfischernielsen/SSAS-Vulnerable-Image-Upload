@@ -3,7 +3,24 @@
 <img style="margin: auto; width: 50vh" src="{{ url_for('static', filename=filename)}}"/>
 <ul class="comments">
     {% for comment in image.comments %}
-    <li> <h2> {{ comment.parent.username }}  </h2> {{comment.text}} </li>
+    <li> <h2> {{ comment.user.username }}  </h2> {{comment.comment}} </li>
     {% endfor %}
 </ul>
+
+<form method="post" action="/comment">
+
+<h2>Add comment:</h2>
+    <input type="text" name="comment_text">
+    <input type="hidden" name="image_id" value={{ image.id  }}>
+
+<input type="submit">
+<h2>Share with other users</h2>
+</form>
+
+<form method="post" action="/share">
+{{ share_form.users }}
+<input type="hidden" name="image_id" value={{ image.id  }}>
+
+<input type="submit">
+</form>
 {% endblock %}
