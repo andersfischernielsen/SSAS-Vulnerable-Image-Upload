@@ -7,7 +7,8 @@
             No images have been shared with you. :(
     {% else %}
     {% for img in model["shared_images"] %}
-            <img src="{{ url_for('static', filename=img.image.filename)}}"/>
+
+            <a href="/images/{{img.image.username}}/{{img.image.filename}}"> <img src="{{ url_for('static', filename="images/" + img.image.username + "/" + img.image.filename)}}"/></a>
     {% endfor %}
     {% endif %}
         </div>
@@ -22,7 +23,7 @@
             No images have been shared with you. :(
     {% else %}
     {% for img in model["own_images"] %}
-            <img src="{{ url_for('static', filename="images/" + img.username + "/" + img.filename)}}"/>
+           <a href="/images/{{img.username}}/{{img.filename}}"> <img src="{{ url_for('static', filename="images/" + img.username + "/" + img.filename)}}"/> </a>
     {% endfor %}
     {% endif %}
         </div>

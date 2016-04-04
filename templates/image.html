@@ -1,7 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
 <img style="width: 50vh" src="{{ url_for('static', filename=filename)}}"/>
-<ul class="comments">
+<h2>Comments</h2>
+    <ul class="comments">
     {% for comment in image.comments %}
     <li> <h2> {{ comment.user.username }}  </h2> {{comment.comment}} </li>
     {% endfor %}

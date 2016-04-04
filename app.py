@@ -182,7 +182,7 @@ def comment():
             else:
                 db.session.add(comment)
                 db.session.commit()
-                return redirect(url_for('image', username=user.username, filename=image.filename))
+                return redirect(url_for('image', username=image.username, filename=image.filename))
         else:
             return abort(404)
 
