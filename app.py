@@ -175,6 +175,12 @@ def logout():
     return redirect(url_for('login'))
 
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    # do stuff
+    return redirect(url_for('login'))
+
+
 @app.route('/')
 @auth.login_required
 def upload():

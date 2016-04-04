@@ -1,19 +1,24 @@
 {% extends "layout.html" %}
 {% block content %}
     <h1>Images Shared with You</h1>
+    <div class="container">
         {% for img in model["shared_images"] %}
             <div class="row">
                 <img src="{{ url_for('static', filename=img.image.filename)}}"/>
             </div>
         {% endfor %}
+    </div>
+
     <hr>
 
     <h1>Your Images</h1>
+    <div class="container">
         {% for img in model["own_images"] %}
             <div class="row">
-                <img src="{{ url_for('static', filename=img.filename)}}"/>
+                <img src="{{ url_for('static', filename="images/" + img.username + "/" + img.filename)}}"/>
             </div>
         {% endfor %}
+    </div>
 
     <hr>
 
