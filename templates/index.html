@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-    <h1>Images Shared with You</h1>
+    <h2>Images Shared with You</h2>
     <div class="container">
         <div class="row">
     {% if model["shared_images"].first() == None %}
@@ -15,7 +15,7 @@
 
     <hr>
 
-    <h1>Your Images</h1>
+    <h2>Your Images</h2>
     <div class="container">
         <div class="row">
     {% if model["own_images"].first() == None %}
@@ -31,7 +31,7 @@
 
     <div class="bottom-upload">
         <div class="container">
-        <h2>Upload Image</h2>
+        <h3>Upload Image</h3>
 
         <form action="/upload_image" method="post" enctype="multipart/form-data">
             <input type="file" name="image_upload" accept="image/*">
