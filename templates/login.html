@@ -6,15 +6,17 @@
     <title>Sign In</title>
 </head>
 <body>
-    <h1>Sign In</h1>
+{% extends "layout.html" %}
+{% block content %}
+<h1>Sign In</h1>
+<form action="" method="post" enctype="multipart/form-data">
+    <h2>Username</h2>
+    <input type="text" name="username">
+    <h2>Password</h2>
+    <input type="password" name="password">
+    {{ form.hidden_tag() }}
+    <input type="submit">
+</form>
 
-    <form action="" method="post" enctype="multipart/form-data">
-        <h2>Username</h2>
-        <input type="text" name="username">
-        <h2>Password</h2>
-        <input type="password" name="password">
-        {{ form.hidden_tag() }}
-        <input type="submit">
-    </form>
-</body>
-</html>
+<a href="{{ url_for('register') }}">Register a new user.</a>
+{% endblock %}
