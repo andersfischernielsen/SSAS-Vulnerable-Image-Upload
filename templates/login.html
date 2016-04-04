@@ -15,6 +15,10 @@
     <h2>Password</h2>
     <input type="password" name="password">
     {{ form.hidden_tag() }}
+
+    {% for error, detailed in form.errors.items() %}
+        <li style="color: red; list-style: none">{{ error }}: {{ ",".join(detailed) }}</li>
+    {% endfor %}
     <input type="submit">
 </form>
 
