@@ -2,22 +2,30 @@
 {% block content %}
     <h1>Images Shared with You</h1>
     <div class="container">
-        {% for img in model["shared_images"] %}
-            <div class="row">
-                <img src="{{ url_for('static', filename=img.image.filename)}}"/>
-            </div>
-        {% endfor %}
+        <div class="row">
+    {% if model["shared_images"].first() == None %}
+            No images have been shared with you. :(
+    {% else %}
+    {% for img in model["shared_images"] %}
+            <img src="{{ url_for('static', filename=img.image.filename)}}"/>
+    {% endfor %}
+    {% endif %}
+        </div>
     </div>
 
     <hr>
 
     <h1>Your Images</h1>
     <div class="container">
-        {% for img in model["own_images"] %}
-            <div class="row">
-                <img src="{{ url_for('static', filename="images/" + img.username + "/" + img.filename)}}"/>
-            </div>
-        {% endfor %}
+        <div class="row">
+    {% if model["own_images"].first() == None %}
+            No images have been shared with you. :(
+    {% else %}
+    {% for img in model["own_images"] %}
+            <img src="{{ url_for('static', filename="images/" + img.username + "/" + img.filename)}}"/>
+    {% endfor %}
+    {% endif %}
+        </div>
     </div>
 
     <hr>
