@@ -82,13 +82,14 @@ class UserImage(db.Model):
     username = db.Column(db.String(32), index=True)
     filename = db.Column(db.String(32))
     comments = relationship("Comment")
+    shared = relationship("SharedImage")
 
 class SharedImage(db.Model):
     __tablename__ = 'sharedimages'
     id = db.Column(db.Integer, primary_key=True)
     imageId = db.Column(db.Integer, db.ForeignKey('userimages.id'))
     sharedWithId = db.Column(db.Integer, db.ForeignKey('users.id'))
-
+    image = relationship("UserImage", back_populates="shared")
 
 class Comment(db.Model):
     __tablename__ = 'comments'
@@ -177,10 +178,14 @@ def logout():
 @app.route('/')
 @auth.login_required
 def upload():
-    return render_template('upload.html')
+    own_images = UserImage.query.filter_by(username=auth.current_user.username)
+    shared_images = SharedImage.query.filter_by(sharedWithId=auth.current_user.id)
+    model = {"own_images": own_images, "shared_images": shared_images}
+
+    return render_template('index.html', model=model)
 
 
-def createDirIfNotExists(path):
+def create_dir_if_not_exists(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
@@ -192,7 +197,7 @@ def upload_image():
     filename = secure_filename(pic.filename)
     user_path = os.path.expanduser('~')
     username = auth.current_user.username
-    createDirIfNotExists("static/images/" + username + "/")
+    create_dir_if_not_exists("static/images/" + username + "/")
     pic.save("static/images/" + username + "/" + filename)
     user_image = UserImage(username=username, filename=filename)
     db.session.add(user_image)
