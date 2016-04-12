@@ -23,6 +23,9 @@ db = SQLAlchemy(app)
 login_manager = auth.LoginManager()
 login_manager.init_app(app)
 
+login_manager.session_protection = "strong"
+
+
 
 
 #
