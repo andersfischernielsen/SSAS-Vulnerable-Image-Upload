@@ -13,8 +13,8 @@ from wtforms import StringField, PasswordField, validators, HiddenField, SelectF
 
 # initialization
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
-WTF_CSRF_SECRET_KEY = 'a random string'
+app.config['SECRET_KEY'] = 'NOT THE SAME AS ON VB THO '
+WTF_CSRF_SECRET_KEY = 'SORRY GUYS'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 
